@@ -7,7 +7,7 @@ export class Chat {
 
   constructor() {
     this.prisma = prisma;
-    //this is wilfred kimani doing the push test 
+  
   }
 
   // Find chat room by ID
