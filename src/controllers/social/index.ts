@@ -14,7 +14,7 @@ const followUser = async (req: Request, res: Response): Promise<void> => {
   }
 
   if (userId === targetUserId) {
-    res.status(400).send({ message: 'Cannot follow yourself.' });
+    res.status(400).send({ message: 'Cannot follow yourself!' });
     return;
   }
 
