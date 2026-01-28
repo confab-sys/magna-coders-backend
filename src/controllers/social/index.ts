@@ -9,7 +9,7 @@ const followUser = async (req: Request, res: Response): Promise<void> => {
   const { targetUserId } = req.params;
 
   if (!targetUserId) {
-    res.status(400).send({ message: 'Target user ID is required.' });
+    res.status(400).send({ message: 'Target user ID is required!' });
     return;
   }
 
