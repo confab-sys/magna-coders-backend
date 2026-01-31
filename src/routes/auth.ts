@@ -1,14 +1,12 @@
 import express, { Router } from 'express';
-// Auth controllers temporarily disabled
 import { asyncHandler } from '../middleware/errorHandler';
 import { authenticateToken } from '../middleware/auth';
+import { register, login, getUserProfile as getProfile, updateUserProfile as updateProfile, logout, refresh, activate } from '../controllers/auth';
 
-// Stub functions for disabled auth controller
-const loginUser = (req: any, res: any) => res.status(501).json({ message: 'Auth endpoints temporarily disabled' });
-const signupUser = (req: any, res: any) => res.status(501).json({ message: 'Auth endpoints temporarily disabled' });
-const getUserProfile = (req: any, res: any) => res.status(501).json({ message: 'Auth endpoints temporarily disabled' });
-const updateUserProfile = (req: any, res: any) => res.status(501).json({ message: 'Auth endpoints temporarily disabled' });
-const refreshAccessToken = (req: any, res: any) => res.status(501).json({ message: 'Auth endpoints temporarily disabled' });
+const loginUser = login;
+const signupUser = register;
+const getUserProfile = getProfile;
+const updateUserProfile = updateProfile;
 
 /**
  * @swagger
@@ -18,26 +16,120 @@ const refreshAccessToken = (req: any, res: any) => res.status(501).json({ messag
  *       type: object
  *       required:
  *         - email
- *         - password
+ *         - username
  *       properties:
  *         id:
  *           type: string
  *           description: The auto-generated id of the user
+ *         username:
+ *           type: string
+ *           description: User's username
  *         email:
  *           type: string
  *           description: User email address
- *         password:
+ *         avatar_url:
  *           type: string
- *           description: User password
- *         name:
+ *           nullable: true
+ *           description: URL to user's avatar image
+ *         location:
  *           type: string
- *           description: User's full name
- *         profilePicture:
- *           type: string
- *           description: URL to user's profile picture
+ *           nullable: true
  *         bio:
  *           type: string
- *           description: User's biography
+ *           nullable: true
+ *         website_url:
+ *           type: string
+ *           nullable: true
+ *         github_url:
+ *           type: string
+ *           nullable: true
+ *         linkedin_url:
+ *           type: string
+ *           nullable: true
+ *         twitter_url:
+ *           type: string
+ *           nullable: true
+ *         whatsapp_url:
+ *           type: string
+ *           nullable: true
+ *         availability:
+ *           type: string
+ *           nullable: true
+ *         profile_complete_percentage:
+ *           type: integer
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *     LoginRequest:
+ *       type: object
+ *       required:
+ *         - identifier
+ *         - password
+ *       properties:
+ *         identifier:
+ *           type: string
+ *           description: Email or username
+ *         password:
+ *           type: string
+ *     RegisterRequest:
+ *       type: object
+ *       required:
+ *         - username
+ *         - email
+ *         - password
+ *       properties:
+ *         username:
+ *           type: string
+ *         email:
+ *           type: string
+ *         password:
+ *           type: string
+ *         avatar_url:
+ *           type: string
+ *         location:
+ *           type: string
+ *         bio:
+ *           type: string
+ *         website_url:
+ *           type: string
+ *         github_url:
+ *           type: string
+ *         linkedin_url:
+ *           type: string
+ *         twitter_url:
+ *           type: string
+ *         whatsapp_url:
+ *           type: string
+ *         availability:
+ *           type: string
+ *       example:
+ *         username: "jdoe"
+ *         email: "john.doe@example.com"
+ *         password: "S3cur3P@ssw0rd!"
+ *         avatar_url: "https://example.com/avatars/jdoe.jpg"
+ *         location: "Nairobi, Kenya"
+ *         bio: "Full-stack developer, open-source contributor and tech blogger."
+ *         website_url: "https://johndoe.dev"
+ *         github_url: "https://github.com/johndoe"
+ *         linkedin_url: "https://linkedin.com/in/johndoe"
+ *         twitter_url: "https://twitter.com/johndoe"
+ *         whatsapp_url: "+254712345678"
+ *         availability: "open"
+ *     UpdateUserRequest:
+ *       type: object
+ *       properties:
+ *         username:
+ *           type: string
+ *         email:
+ *           type: string
+ *         password:
+ *           type: string
+ *         avatar_url:
+ *           type: string
+ *         bio:
+ *           type: string
  *     AuthResponse:
  *       type: object
  *       properties:
@@ -61,15 +153,7 @@ const router: Router = express.Router();
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
+ *             $ref: '#/components/schemas/LoginRequest'
  *     responses:
  *       200:
  *         description: Login successful
@@ -116,7 +200,31 @@ router.post('/login', asyncHandler(loginUser));
  *       401:
  *         description: Invalid or expired refresh token
  */
-router.post('/refresh', asyncHandler(refreshAccessToken));
+router.post('/refresh', asyncHandler(refresh));
+router.get('/activate', asyncHandler(activate));
+
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   post:
+ *     summary: Logout user and revoke refresh token(s)
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *               userId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Logged out
+ */
+router.post('/logout', asyncHandler(logout));
 
 /**
  * @swagger
@@ -129,18 +237,7 @@ router.post('/refresh', asyncHandler(refreshAccessToken));
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *               - username
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *               username:
- *                 type: string
+ *             $ref: '#/components/schemas/RegisterRequest'
  *     responses:
  *       201:
  *         description: User created successfully
@@ -208,14 +305,7 @@ router.get('/profile/:id', authenticateToken, asyncHandler(getUserProfile));
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               profilePicture:
- *                 type: string
- *               bio:
- *                 type: string
+ *             $ref: '#/components/schemas/UpdateUserRequest'
  *     responses:
  *       200:
  *         description: Profile updated successfully

@@ -6,3 +6,8 @@ declare module 'stripe' {
   const Stripe: any;
   export default Stripe;
 }
+
+declare module 'razorpay' {
+  const Razorpay: any;
+  export default Razorpay;
+} 

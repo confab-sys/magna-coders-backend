@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import OTPService from '../services/otpService';
+import { OTPService } from '../services';
 import { asyncHandler } from '../middleware/errorHandler';
 
 /**

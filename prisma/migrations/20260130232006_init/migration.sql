@@ -3,6 +3,7 @@ CREATE TABLE "users" (
     "id" UUID NOT NULL,
     "username" VARCHAR NOT NULL,
     "email" VARCHAR NOT NULL,
+    "password_hash" VARCHAR,
     "created_at" TIMESTAMPTZ(6) DEFAULT timezone('utc'::text, now()),
     "updated_at" TIMESTAMPTZ(6) DEFAULT timezone('utc'::text, now()),
     "availability" VARCHAR DEFAULT 'available',

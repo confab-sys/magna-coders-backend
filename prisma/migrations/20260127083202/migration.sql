@@ -127,7 +127,7 @@ ALTER TABLE "public"."bids" DROP CONSTRAINT "bids_projectId_fkey";
 
 -- DropForeignKey
 ALTER TABLE "public"."chat_room_members" DROP CONSTRAINT "chat_room_members_chatRoomId_fkey";
-ADD COLUMN     "id" UUID NOT NULL,
+ALTER TABLE "public"."chat_room_members" ADD COLUMN     "id" UUID NOT NULL;
 -- DropForeignKey
 ALTER TABLE "public"."chat_room_members" DROP CONSTRAINT "chat_room_members_userId_fkey";
 
@@ -144,7 +144,7 @@ ALTER TABLE "public"."follows" DROP CONSTRAINT "follows_followingId_fkey";
 
 -- DropForeignKey
 ALTER TABLE "public"."likes" DROP CONSTRAINT "likes_commentId_fkey";
-ADD COLUMN     "id" UUID NOT NULL,
+ALTER TABLE "public"."likes" ADD COLUMN     "id" UUID NOT NULL;
 -- DropForeignKey
 ALTER TABLE "public"."likes" DROP CONSTRAINT "likes_postId_fkey";
 -- DropForeignKey
@@ -156,7 +156,7 @@ ALTER TABLE "public"."likes" DROP CONSTRAINT "likes_userId_fkey";
 -- DropForeignKey
 ALTER TABLE "public"."messages" DROP CONSTRAINT "messages_chatRoomId_fkey";
 
-ADD COLUMN     "id" UUID NOT NULL,
+ALTER TABLE "public"."messages" ADD COLUMN     "id" UUID NOT NULL;
 ALTER TABLE "public"."messages" DROP CONSTRAINT "messages_senderId_fkey";
 
 ALTER TABLE "public"."notifications" DROP CONSTRAINT "notifications_userId_fkey";
@@ -170,7 +170,7 @@ ALTER TABLE "public"."payments" DROP CONSTRAINT "payments_projectId_fkey";
 -- DropForeignKey
 ALTER TABLE "public"."payments" DROP CONSTRAINT "payments_toUserId_fkey";
 
-ADD COLUMN     "id" UUID NOT NULL,
+ALTER TABLE "public"."payments" ADD COLUMN     "id" UUID NOT NULL;
 ALTER TABLE "public"."payments" DROP CONSTRAINT "payments_walletId_fkey";
 
 ALTER TABLE "public"."posts" DROP CONSTRAINT "posts_authorId_fkey";
@@ -186,7 +186,7 @@ ALTER TABLE "public"."projects" DROP CONSTRAINT "projects_categoryId_fkey";
 
 -- DropForeignKey
 ALTER TABLE "public"."projects" DROP CONSTRAINT "projects_clientId_fkey";
-ADD COLUMN     "id" UUID NOT NULL,
+ALTER TABLE "public"."projects" ADD COLUMN     "id" UUID NOT NULL;
 -- DropForeignKey
 ALTER TABLE "public"."refresh_tokens" DROP CONSTRAINT "refresh_tokens_userId_fkey";
 
@@ -209,7 +209,7 @@ ALTER TABLE "public"."social_integrations" DROP CONSTRAINT "social_integrations_
 
 -- DropForeignKey
 ALTER TABLE "public"."wallets" DROP CONSTRAINT "wallets_userId_fkey";
-ADD COLUMN     "id" UUID NOT NULL,
+ALTER TABLE "public"."wallets" ADD COLUMN     "id" UUID NOT NULL;
 -- DropIndex
 DROP INDEX "public"."wallets_userId_key";
 
@@ -284,7 +284,7 @@ ADD COLUMN     "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
 ALTER COLUMN "title" SET DATA TYPE VARCHAR,
 ADD CONSTRAINT "notifications_pkey" PRIMARY KEY ("id");
 
-ADD COLUMN     "id" UUID NOT NULL,
+ALTER TABLE "posts" ADD COLUMN     "id" UUID NOT NULL;
 ALTER TABLE "posts" DROP CONSTRAINT "posts_pkey",
 DROP COLUMN "authorId",
 DROP COLUMN "categoryId",

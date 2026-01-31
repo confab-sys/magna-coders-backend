@@ -50,6 +50,35 @@ export class EmailService {
     await this.sendEmail(email, subject, html);
   }
 
+  // Send activation email
+  async sendActivationEmail(userEmail: string, token: string): Promise<void> {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+    const activationLink = `${backendUrl}/api/auth/activate?token=${encodeURIComponent(token)}`;
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Activate your Magna Coders account</h2>
+        <p>Hi there,</p>
+        <p>Thanks for registering! Please activate your account by clicking the button below:</p>
+
+        <a href="${activationLink}"
+           style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0;">
+          Activate Account
+        </a>
+
+        <p>If the button doesn't work, copy and paste the following link into your browser:</p>
+        <p style="word-break: break-all;"><a href="${activationLink}">${activationLink}</a></p>
+
+        <p>This link will expire in 24 hours.</p>
+        <br>
+        <p>Best regards,<br>The Magna Coders Team</p>
+      </div>
+    `;
+
+    await this.sendEmail(userEmail, 'Activate your Magna Coders account', html);
+  }
+
   // Send welcome email
   async sendWelcomeEmail(userEmail: string): Promise<void> {
     const welcomeHtml = `

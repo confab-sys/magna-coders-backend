@@ -8,8 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-
 model users {
   id                          String                 @id @db.Uuid
   username                    String                 @unique @db.VarChar
@@ -27,6 +25,9 @@ model users {
   linkedin_url                String?
   twitter_url                 String?
   whatsapp_url                String?
+  is_active                   Boolean?               @default(false)
+  activation_token            String?                @db.VarChar
+  activation_expires_at       DateTime?              @db.Timestamptz(6)
   comments                    comments[]
   conversationMemberships     conversation_members[]
   eventsCreated               events[]               @relation("createdBy")
@@ -45,6 +46,7 @@ model users {
   categories                  user_categories[]
   roles                       user_roles[]
   skills                      user_skills[]
+  refresh_tokens              refresh_tokens[]
 
   @@map("users")
 }
@@ -110,18 +112,18 @@ model categories {
 }
 
 model posts {
-  id           String       @id @db.Uuid
-  title        String       @db.VarChar
-  content      String?
-  author_id    String       @db.Uuid
-  category_id  String?      @db.Uuid
-  created_at   DateTime?    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  updated_at   DateTime?    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  comments     comments[]
-  likes        likes[]
-  post_media   post_media[]
-  author       users        @relation(fields: [author_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  categories   categories?  @relation(fields: [category_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  id          String       @id @db.Uuid
+  title       String       @db.VarChar
+  content     String?
+  author_id   String       @db.Uuid
+  category_id String?      @db.Uuid
+  created_at  DateTime?    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  updated_at  DateTime?    @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+  comments    comments[]
+  likes       likes[]
+  post_media  post_media[]
+  author      users        @relation(fields: [author_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categories  categories?  @relation(fields: [category_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@map("posts")
 }
@@ -151,10 +153,16 @@ model comments {
   content    String
   author_id  String    @db.Uuid
   post_id    String    @db.Uuid
+  parent_id  String?   @db.Uuid
   created_at DateTime? @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
   updated_at DateTime? @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  author     users     @relation(fields: [author_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  posts      posts     @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  // Self-referential relation for nested comments
+  parent  comments?  @relation("CommentReplies", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  replies comments[] @relation("CommentReplies")
+
+  author users @relation(fields: [author_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  posts  posts @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("comments")
 }
@@ -224,13 +232,13 @@ model events {
 }
 
 model friends {
-  id        String    @id @db.Uuid
-  user_id   String    @db.Uuid
-  friend_id String    @db.Uuid
-  status    String    @default("pending") @db.VarChar
+  id         String    @id @db.Uuid
+  user_id    String    @db.Uuid
+  friend_id  String    @db.Uuid
+  status     String    @default("pending") @db.VarChar
   created_at DateTime? @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  friendOf  users     @relation("friendOf", fields: [friend_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  user      users     @relation("userFriends", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  friendOf   users     @relation("friendOf", fields: [friend_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user       users     @relation("userFriends", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("friends")
 }
@@ -271,13 +279,19 @@ model conversation_members {
 }
 
 model messages {
-  id              String        @id @db.Uuid
+  id              String    @id @db.Uuid
   content         String
-  sender_id       String        @db.Uuid
-  conversation_id String        @db.Uuid
-  created_at      DateTime?     @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
-  conversations   conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  sender          users         @relation("senderMessages", fields: [sender_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sender_id       String    @db.Uuid
+  conversation_id String    @db.Uuid
+  parent_id       String?   @db.Uuid
+  created_at      DateTime? @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+
+  // Self-referential relation for nested messages
+  parent  messages?  @relation("MessageReplies", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  replies messages[] @relation("MessageReplies")
+
+  conversations conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sender        users         @relation("senderMessages", fields: [sender_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("messages")
 }
@@ -314,4 +328,17 @@ model wallets {
   updated_at DateTime? @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
 
   @@map("wallets")
+}
+
+model refresh_tokens {
+  id         String    @id @db.Uuid
+  token      String    @unique @db.VarChar
+  user_id    String    @db.Uuid
+  revoked    Boolean   @default(false)
+  expires_at DateTime?
+  created_at DateTime? @default(dbgenerated("timezone('utc'::text, now())")) @db.Timestamptz(6)
+
+  users users @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("refresh_tokens")
 }

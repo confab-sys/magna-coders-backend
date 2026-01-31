@@ -46,10 +46,17 @@ interface ClientError {
   details?: any;
 }
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || ''
-});
+// Lazily construct the Razorpay client to avoid throwing on module import when env vars are missing
+const createRazorpayClient = () => {
+  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+    return null;
+  }
+
+  return new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+  });
+};
 
 const logger = {
   info: (message: string, data?: any) => {
@@ -103,7 +110,17 @@ export const createRazorpayPaymentIntent = async (data: PaymentData): Promise<Ra
       fromUserId: data.fromUserId
     });
 
-    const order = await razorpay.orders.create(orderRequest);
+    const client = createRazorpayClient();
+    if (!client) {
+      const error: ClientError = {
+        message: 'Razorpay not configured. Missing API keys.',
+        statusCode: 500
+      };
+      logger.error('Razorpay configuration error', error);
+      throw error;
+    }
+
+    const order = await client.orders.create(orderRequest);
 
     logger.info('Razorpay order created successfully', {
       orderId: order.id,

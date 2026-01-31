@@ -9,6 +9,16 @@ interface RegisterRequest {
   email: string;
   password: string;
   otp?: string;
+  // optional profile fields
+  avatar_url?: string | null;
+  location?: string | null;
+  bio?: string | null;
+  website_url?: string | null;
+  github_url?: string | null;
+  linkedin_url?: string | null;
+  twitter_url?: string | null;
+  whatsapp_url?: string | null;
+  availability?: string | null;
 }
 
 interface RegisterResponse {
@@ -16,6 +26,8 @@ interface RegisterResponse {
     id: string;
     username: string;
     email: string;
+    avatar_url?: string | null;
+    bio?: string | null;
   };
   message: string;
   requiresVerification?: boolean;
@@ -115,22 +127,44 @@ export async function register(userData: RegisterRequest): Promise<RegisterRespo
     // Generate user ID
     const userId = uuidv4();
 
-    // Create user
-    logger.info('Creating user', { userId, username: userData.username, email: userData.email });
+    // Create activation token and expiry (24 hours)
+    const activationToken = uuidv4();
+    const activationExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    // Create user with optional profile fields, initially deactivated
+    logger.info('Creating user (inactive)', { userId, username: userData.username, email: userData.email });
     const user = await prisma.users.create({
       data: {
         id: userId,
         username: userData.username,
         email: userData.email,
-        // password_hash: passwordHash, // TODO: Uncomment after migration
+        password_hash: passwordHash,
+        avatar_url: userData.avatar_url || null,
+        location: userData.location || null,
+        bio: userData.bio || null,
+        website_url: userData.website_url || null,
+        github_url: userData.github_url || null,
+        linkedin_url: userData.linkedin_url || null,
+        twitter_url: userData.twitter_url || null,
+        whatsapp_url: userData.whatsapp_url || null,
+        availability: userData.availability || null,
+        is_active: false,
+        activation_token: activationToken,
+        activation_expires_at: activationExpiry
       }
     });
 
-    // TODO: Send OTP verification email/SMS
-    // ni assumption ndo tunafanya hapa hata OTP verification
-    // kwa sasa tuta set requiresVerification to false
+    // Send activation email
+    try {
+      const { EmailService } = await import('../notifications/email');
+      const emailService = new EmailService();
+      await emailService.sendActivationEmail(user.email, activationToken);
+      logger.info('Activation email sent', { userId: user.id, email: user.email });
+    } catch (e) {
+      logger.warn('Failed to send activation email', { error: (e as any).message });
+    }
 
-    logger.info('User registered successfully', { userId: user.id, username: user.username });
+    logger.info('User registered successfully (awaiting activation)', { userId: user.id, username: user.username });
 
     return {
       user: {
@@ -138,8 +172,8 @@ export async function register(userData: RegisterRequest): Promise<RegisterRespo
         username: user.username,
         email: user.email,
       },
-      message: 'User registered successfully',
-      requiresVerification: false // Set to true when OTP verification is implemented
+      message: 'User registered successfully. Please check your email to activate your account.',
+      requiresVerification: true
     };
 
   } catch (error: any) {

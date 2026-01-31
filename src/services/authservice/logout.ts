@@ -34,49 +34,31 @@ const logger = {
   }
 };
 
-export async function logout(userId: LogoutRequest | string): Promise<LogoutResponse> {
+export async function logout(userId: LogoutRequest | string | { userId?: string; refreshToken?: string }): Promise<LogoutResponse> {
   try {
-    const request: LogoutRequest = typeof userId === 'string' ? { userId } : userId;
+    const request: LogoutRequest & { refreshToken?: string } = typeof userId === 'string' ? { userId } : userId as any;
 
-    if (!request.userId) {
+    if (!request.userId && !request.refreshToken) {
       const error: LogoutError = {
-        code: 'INVALID_USER_ID',
-        message: 'Valid user ID is required',
+        code: 'INVALID_REQUEST',
+        message: 'userId or refreshToken is required to logout',
         statusCode: 400
       };
-      logger.error('Invalid user ID for logout', error);
+      logger.error('Invalid logout request', error);
       throw error;
     }
 
-    logger.info('Processing logout', { userId: request.userId });
+    logger.info('Processing logout', { userId: request.userId, hasRefreshToken: !!request.refreshToken });
 
-    // TODO: Invalidate refresh tokens when refresh_tokens table is added to schema
-    // const invalidatedTokens = await prisma.refresh_tokens.updateMany({
-    //   where: {
-    //     userId: request.userId,
-    //     revoked: false
-    //   },
-    //   data: {
-    //     revoked: true
-    //   }
-    // });
-
-    // logger.info('Refresh tokens invalidated', {
-    //   userId: request.userId,
-    //   tokensInvalidated: invalidatedTokens.count
-    // });
-
-    // TODO: Implement access token blacklisting if needed
-    // This would require a separate table for blacklisted tokens
-    // if (request.token) {
-    //   await blacklistToken(request.token);
-    // }
-
-    // Optional: Update user's last logout time or online status
-    // await prisma.users.update({
-    //   where: { id: request.userId },
-    //   data: { last_logout: new Date() }
-    // });
+    if (request.refreshToken) {
+      // Revoke the provided refresh token
+      await prisma.refresh_tokens.updateMany({ where: { token: request.refreshToken }, data: { revoked: true } });
+      logger.info('Revoked refresh token', { tokenPreview: request.refreshToken.slice(0, 8) });
+    } else if (request.userId) {
+      // Revoke all refresh tokens for the user
+      const invalidated = await prisma.refresh_tokens.updateMany({ where: { user_id: request.userId, revoked: false }, data: { revoked: true } });
+      logger.info('Revoked refresh tokens for user', { userId: request.userId, count: invalidated.count });
+    }
 
     const response: LogoutResponse = {
       message: 'Logged out successfully',

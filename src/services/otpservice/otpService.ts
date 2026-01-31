@@ -126,6 +126,42 @@ class OTPService {
     await Promise.all(promises);
   }
 
+  // Request an OTP and send it via the chosen delivery method
+  async requestOTP(identifier: string, deliveryMethod: 'email' | 'sms' | 'whatsapp' = 'email'): Promise<void> {
+    const otp = this.generateOTP({ length: 6, type: 'numeric' });
+
+    switch (deliveryMethod) {
+      case 'email':
+        await this.sendEmailOTP(identifier, otp);
+        break;
+      case 'sms':
+        await this.sendSMSOTP(identifier, otp);
+        break;
+      case 'whatsapp':
+        await this.sendWhatsAppOTP(identifier, otp);
+        break;
+      default:
+        throw new Error('Invalid delivery method');
+    }
+  }
+
+  // Verify an OTP and clean up any remaining OTPs for the identifier
+  async verifyAndCleanOTP(identifier: string, otp: string): Promise<boolean> {
+    const isValid = await this.verifyOTP(identifier, otp);
+
+    if (isValid) {
+      const keysToDelete: string[] = [];
+      for (const [key] of this.otpStore.entries()) {
+        if (key.startsWith(`${identifier}:`)) {
+          keysToDelete.push(key);
+        }
+      }
+      keysToDelete.forEach(key => this.otpStore.delete(key));
+    }
+
+    return isValid;
+  }
+
   // Clean up expired OTPs (should be called periodically)
   cleanupExpiredOTPs(): void {
     const now = new Date();
@@ -134,6 +170,11 @@ class OTPService {
         this.otpStore.delete(key);
       }
     }
+  }
+
+  // Initialize cleanup interval (call once to start periodic cleanup)
+  initCleanupInterval(): void {
+    setInterval(() => this.cleanupExpiredOTPs(), 5 * 60 * 1000);
   }
 
   // Get OTP statistics (for monitoring)
@@ -152,7 +193,24 @@ class OTPService {
       active
     };
   }
-}
+
+  // Get OTP status for a specific identifier (used by /status/:identifier)
+  getOTPStatus(identifier: string): { exists: boolean; remaining: number; expiresAt?: Date } {
+    let count = 0;
+    let earliestExpiry: Date | undefined;
+
+    for (const [key, value] of this.otpStore.entries()) {
+      if (key.startsWith(`${identifier}:`)) {
+        count++;
+        if (!earliestExpiry || value.expiresAt < earliestExpiry) {
+          earliestExpiry = value.expiresAt;
+        }
+      }
+    }
+
+    return { exists: count > 0, remaining: count, expiresAt: earliestExpiry };
+  }
+} 
 
 export default OTPService;
 export { OTPService };

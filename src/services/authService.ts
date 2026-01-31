@@ -15,7 +15,7 @@ class AuthService {
   }
 
   // Login user
-  async login(credentials: { username: string; password: string; otp?: string }): Promise<any> {
+  async login(credentials: { identifier: string; password: string; otp?: string }): Promise<any> {
     return await login(credentials);
   }
 
@@ -37,6 +37,12 @@ class AuthService {
   // Verify user account
   async verifyUser(userId: string, badge?: string): Promise<any> {
     return await verifyUser({ userId, badge });
+  }
+
+  // Update user profile
+  async updateUser(userId: string, data: any): Promise<any> {
+    const { updateUser } = await import('./authservice/update');
+    return await updateUser(userId, data);
   }
 }
 
