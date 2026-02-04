@@ -46,9 +46,6 @@ import { asyncHandler } from '../middleware/errorHandler';
 const router: Router = express.Router();
 const otpService = new OTPService();
 
-// Initialize OTP cleanup
-otpService.initCleanupInterval();
-
 /**
  * @swagger
  * /api/otp/request:
@@ -92,7 +89,11 @@ router.post('/request', asyncHandler(async (req: express.Request, res: express.R
     });
   }
 
-  await otpService.requestOTP(identifier, deliveryMethod as 'email' | 'sms' | 'whatsapp');
+  // Generate and send OTP
+  const otp = otpService.generateOTP();
+
+  const channels: ('email' | 'sms' | 'whatsapp')[] = [deliveryMethod as 'email' | 'sms' | 'whatsapp'];
+  await otpService.sendMultiChannelOTP(identifier, otp, channels);
 
   return res.status(200).json({
     success: true,
@@ -135,7 +136,7 @@ router.post('/verify', asyncHandler(async (req: express.Request, res: express.Re
     });
   }
 
-  const isValid = await otpService.verifyAndCleanOTP(identifier, otp);
+  const isValid = await otpService.verifyOTP(identifier, otp);
 
   if (isValid) {
     return res.status(200).json({
@@ -189,19 +190,11 @@ router.post('/verify', asyncHandler(async (req: express.Request, res: express.Re
 router.get('/status/:identifier', asyncHandler(async (req: express.Request, res: express.Response) => {
   const { identifier } = req.params;
 
-  if (identifier) {
-
-    const status = otpService.getOTPStatus(identifier);
-    res.status(200).json({
-      success: true,
-      status
-    });
-  } else {
-    res.status(400).json({
-      success: false,
-      message: 'Identifier is required'
-    });
-  }
+  const stats = otpService.getOTPStats();
+  res.status(200).json({
+    success: true,
+    stats
+  });
 
 }));
 
